@@ -34,16 +34,17 @@
         <a-light type="directional" position="3 5 4" intensity="1.6" color="#fff1d8"></a-light>
         <a-light type="directional" position="-4 2 -3" intensity="1.1" color="#bdd5ff"></a-light>
         <a-light type="point" position="0 1.6 1.2" intensity="2.9" distance="18" decay="2" color="#f2f7ff"></a-light>
+        <a-light type="point" position="0 0 0" intensity="1.7" distance="10" decay="2" color="#dfefff"></a-light>
       </a-entity>
 
       <a-entity id="headspace-model" position="0 0 0" rotation="0 90 0" scale="1 1 1">
-        <a-entity id="headspace-asset" gltf-model="#headspace"></a-entity>
+        <a-entity id="headspace-asset" gltf-model="#headspace" material="side: double; color: #d9d9d9; emissive: #101721; emissiveIntensity: 0.25"></a-entity>
       </a-entity>
 
       <a-entity id="collision-root"></a-entity>
 
-      <a-entity id="player" position="0 0.8 0" scale="0.08 0.08 0.08">
-        <a-entity camera look-controls="pointerLockEnabled: false" fly-move="speed: 2.1; verticalSpeed: 1.7"></a-entity>
+      <a-entity id="player" position="0 0.2 0.4" scale="0.08 0.08 0.08">
+        <a-entity camera look-controls="pointerLockEnabled: false" fly-move="speed: 0.36; verticalSpeed: 0.24"></a-entity>
       </a-entity>
     </a-scene>
 
@@ -63,11 +64,27 @@
         return collider;
       }
 
+      function setDoubleSidedMaterials(object3D) {
+        object3D.traverse((node) => {
+          if (!node.isMesh) return;
+
+          const mats = Array.isArray(node.material) ? node.material : [node.material];
+          mats.forEach((material) => {
+            if (!material) return;
+            material.side = THREE.DoubleSide;
+            material.needsUpdate = true;
+          });
+        });
+      }
+
       function scaleModelToFit() {
         const asset = document.getElementById('headspace-asset');
         if (!asset || !asset.object3D || !asset.object3D.children.length) {
+          player.setAttribute('position', '0 0.2 0.4');
           return;
         }
+
+        setDoubleSidedMaterials(asset.object3D);
 
         const box = new THREE.Box3().setFromObject(asset.object3D);
         const size = new THREE.Vector3();
@@ -78,19 +95,9 @@
         const scale = targetSize / maxDim;
         headspaceModel.setAttribute('scale', `${scale} ${scale} ${scale}`);
 
-        const floorY = box.min.y * scale - 0.25;
-        const halfX = (size.x * scale) * 0.52;
-        const halfY = (size.y * scale) * 0.52;
-        const halfZ = (size.z * scale) * 0.52;
+        player.setAttribute('position', '0 0.2 0.4');
 
         collisionRoot.innerHTML = '';
-        createCollider([halfX * 2 + 0.6, 0.4, halfZ * 2 + 0.6], [0, floorY, 0]);
-        createCollider([0.5, halfY * 2 + 0.6, halfZ * 2 + 0.6], [-(halfX + 0.25), halfY * 0.5, 0]);
-        createCollider([0.5, halfY * 2 + 0.6, halfZ * 2 + 0.6], [(halfX + 0.25), halfY * 0.5, 0]);
-        createCollider([halfX * 2 + 0.6, halfY * 2 + 0.6, 0.5], [0, halfY * 0.5, -(halfZ + 0.25)]);
-        createCollider([halfX * 2 + 0.6, halfY * 2 + 0.6, 0.5], [0, halfY * 0.5, (halfZ + 0.25)]);
-
-        player.setAttribute('position', `0 ${Math.max(0.8, halfY * 0.18 + 0.5)} ${halfZ + 1.4}`);
       }
 
       document.getElementById('headspace-asset').addEventListener('model-loaded', scaleModelToFit);
@@ -111,34 +118,17 @@
       }
 
       function sceneCollides(position) {
-        const colliders = document.querySelectorAll('.collider');
-        const radius = 0.22;
-
-        for (const collider of colliders) {
-          const [sx, sy, sz] = (collider.getAttribute('data-collider-size') || '1 1 1').split(' ').map(Number);
-          const colliderPos = new THREE.Vector3();
-          collider.object3D.getWorldPosition(colliderPos);
-          const half = new THREE.Vector3(sx / 2, sy / 2, sz / 2);
-
-          const inX = position.x + radius > colliderPos.x - half.x && position.x - radius < colliderPos.x + half.x;
-          const inY = position.y + radius > colliderPos.y - half.y && position.y - radius < colliderPos.y + half.y;
-          const inZ = position.z + radius > colliderPos.z - half.z && position.z - radius < colliderPos.z + half.z;
-
-          if (inX && inY && inZ) {
-            return true;
-          }
-        }
-
         return false;
       }
 
       AFRAME.registerComponent('fly-move', {
         schema: {
-          speed: { type: 'number', default: 1.8 },
-          verticalSpeed: { type: 'number', default: 1.5 }
+          speed: { type: 'number', default: 0.36 },
+          verticalSpeed: { type: 'number', default: 0.24 }
         },
         init: function () {
-          this.camera = this.el.querySelector('[camera]');
+          this.camera = this.el;
+          this.hoverTime = 0;
         },
         tick: function (time, delta) {
           if (!this.camera) return;
@@ -147,48 +137,65 @@
           const verticalScale = (delta / 1000) * this.data.verticalSpeed;
           const player = this.el.parentElement;
           const current = player.object3D.position.clone();
-          const next = current.clone();
 
-          const cameraDirection = new THREE.Vector3();
-          this.camera.object3D.getWorldDirection(cameraDirection);
-          cameraDirection.y = 0;
-          if (cameraDirection.lengthSq() > 0) {
-            cameraDirection.normalize();
+          const forward = new THREE.Vector3(0, 0, -1);
+          const right = new THREE.Vector3(1, 0, 0);
+          forward.applyQuaternion(this.camera.object3D.quaternion);
+          right.applyQuaternion(this.camera.object3D.quaternion);
+
+          const move = new THREE.Vector3();
+          let isMoving = false;
+
+          if (pressed.KeyW) {
+            move.add(forward);
+            isMoving = true;
+          }
+          if (pressed.KeyS) {
+            move.sub(forward);
+            isMoving = true;
+          }
+          if (pressed.KeyA) {
+            move.sub(right);
+            isMoving = true;
+          }
+          if (pressed.KeyD) {
+            move.add(right);
+            isMoving = true;
           }
 
-          const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), cameraDirection).normalize();
-          const move = new THREE.Vector3();
-
-          if (pressed.KeyW) move.add(cameraDirection);
-          if (pressed.KeyS) move.sub(cameraDirection);
-          if (pressed.KeyA) move.sub(right);
-          if (pressed.KeyD) move.add(right);
-
-          if (pressed.Space) move.y += 1;
-          if (pressed.ShiftLeft || pressed.ShiftRight) move.y -= 1;
+          if (pressed.Space) {
+            move.y += 1;
+            isMoving = true;
+          }
+          if (pressed.ShiftLeft || pressed.ShiftRight) {
+            move.y -= 1;
+            isMoving = true;
+          }
 
           if (move.lengthSq() > 0) {
             move.normalize();
 
-            next.x += move.x * moveScale;
-            if (!sceneCollides(next)) {
-              current.x = next.x;
-            }
+            const nextX = current.x + move.x * moveScale;
+            const nextY = current.y + move.y * verticalScale;
+            const nextZ = current.z + move.z * moveScale;
 
-            next.y += move.y * verticalScale;
-            if (!sceneCollides(next)) {
-              current.y = next.y;
+            if (!sceneCollides(new THREE.Vector3(nextX, current.y, current.z))) {
+              current.x = nextX;
             }
-
-            next.z += move.z * moveScale;
-            if (!sceneCollides(next)) {
-              current.z = next.z;
+            if (!sceneCollides(new THREE.Vector3(current.x, nextY, current.z))) {
+              current.y = nextY;
             }
+            if (!sceneCollides(new THREE.Vector3(current.x, current.y, nextZ))) {
+              current.z = nextZ;
+            }
+          } else {
+            this.hoverTime += delta;
+            current.y += Math.sin(this.hoverTime * 0.006) * 0.004;
           }
 
-          current.x = clamp(current.x, -6, 6);
-          current.y = clamp(current.y, -0.5, 7);
-          current.z = clamp(current.z, -6, 6);
+          current.x = clamp(current.x, -50, 50);
+          current.y = clamp(current.y, -20, 20);
+          current.z = clamp(current.z, -50, 50);
 
           player.object3D.position.copy(current);
         }
@@ -203,34 +210,65 @@
         if (!AudioCtx) return;
 
         const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+
         const master = ctx.createGain();
-        master.gain.value = 0.045;
+        master.gain.value = 0.12;
         master.connect(ctx.destination);
 
-        const oscillatorA = ctx.createOscillator();
-        oscillatorA.type = 'sine';
-        oscillatorA.frequency.value = 140;
+        const toneA = ctx.createOscillator();
+        toneA.type = 'triangle';
+        toneA.frequency.value = 120;
 
-        const oscillatorB = ctx.createOscillator();
-        oscillatorB.type = 'triangle';
-        oscillatorB.frequency.value = 155;
+        const toneB = ctx.createOscillator();
+        toneB.type = 'sine';
+        toneB.frequency.value = 175;
 
         const lfo = ctx.createOscillator();
         lfo.type = 'sine';
-        lfo.frequency.value = 7.5;
+        lfo.frequency.value = 4.5;
 
         const lfoGain = ctx.createGain();
-        lfoGain.gain.value = 18;
+        lfoGain.gain.value = 24;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 900;
+        filter.Q.value = 0.8;
+
+        const toneGain = ctx.createGain();
+        toneGain.gain.value = 0.18;
+
+        const noiseBuffer = ctx.createBuffer(1, 0.7 * ctx.sampleRate, ctx.sampleRate);
+        const channel = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < channel.length; i++) {
+          channel[i] = (Math.random() * 2 - 1) * 0.12;
+        }
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        noise.loop = true;
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.value = 0.08;
 
         lfo.connect(lfoGain);
-        lfoGain.connect(oscillatorA.frequency);
-        lfoGain.connect(oscillatorB.frequency);
+        lfoGain.connect(toneA.frequency);
+        lfoGain.connect(toneB.frequency);
 
-        oscillatorA.connect(master);
-        oscillatorB.connect(master);
+        toneA.connect(toneGain);
+        toneB.connect(toneGain);
+        toneGain.connect(filter);
 
-        oscillatorA.start();
-        oscillatorB.start();
+        noise.connect(noiseGain);
+        noiseGain.connect(filter);
+        filter.connect(master);
+
+        toneA.start();
+        toneB.start();
+        noise.start();
         lfo.start();
       }
 
