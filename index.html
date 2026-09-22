@@ -1,14 +1,241 @@
+<!DOCTYPE html>
 <html>
   <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+    <style>
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #02050d;
+      }
+
+      a-scene {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
   </head>
   <body>
-<a-scene>
-  <a-assets>
-    <a-asset-item id="headspace" src="headspace.glb"></a-asset-item>
-  </a-assets>
+    <a-scene fog="type: linear; color: #02050d; near: 2; far: 20" renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true">
+      <a-assets>
+        <a-asset-item id="headspace" src="headspace.glb"></a-asset-item>
+      </a-assets>
 
-  <a-entity gltf-model="#headspace"></a-entity>
-</a-scene>
- </body>
+      <a-sky color="#030914"></a-sky>
+
+      <a-entity id="scene-lights">
+        <a-light type="ambient" color="#edf3ff" intensity="0.9"></a-light>
+        <a-light type="hemisphere" color="#dfeeff" ground-color="#0b1117" intensity="1.2"></a-light>
+        <a-light type="directional" position="3 5 4" intensity="1.6" color="#fff1d8"></a-light>
+        <a-light type="directional" position="-4 2 -3" intensity="1.1" color="#bdd5ff"></a-light>
+        <a-light type="point" position="0 1.6 1.2" intensity="2.9" distance="18" decay="2" color="#f2f7ff"></a-light>
+      </a-entity>
+
+      <a-entity id="headspace-model" position="0 0 0" rotation="0 90 0" scale="1 1 1">
+        <a-entity id="headspace-asset" gltf-model="#headspace"></a-entity>
+      </a-entity>
+
+      <a-entity id="collision-root"></a-entity>
+
+      <a-entity id="player" position="0 0.8 0" scale="0.08 0.08 0.08">
+        <a-entity camera look-controls="pointerLockEnabled: false" fly-move="speed: 2.1; verticalSpeed: 1.7"></a-entity>
+      </a-entity>
+    </a-scene>
+
+    <script>
+      const pressed = {};
+      const collisionRoot = document.getElementById('collision-root');
+      const headspaceModel = document.getElementById('headspace-model');
+      const player = document.getElementById('player');
+
+      function createCollider(size, position) {
+        const collider = document.createElement('a-box');
+        collider.setAttribute('class', 'collider');
+        collider.setAttribute('data-collider-size', size.join(' '));
+        collider.setAttribute('position', position.join(' '));
+        collider.setAttribute('material', 'opacity: 0; transparent: true; visible: false');
+        collisionRoot.appendChild(collider);
+        return collider;
+      }
+
+      function scaleModelToFit() {
+        const asset = document.getElementById('headspace-asset');
+        if (!asset || !asset.object3D || !asset.object3D.children.length) {
+          return;
+        }
+
+        const box = new THREE.Box3().setFromObject(asset.object3D);
+        const size = new THREE.Vector3();
+        box.getSize(size);
+
+        const maxDim = Math.max(size.x || 1, size.y || 1, size.z || 1);
+        const targetSize = 4.8;
+        const scale = targetSize / maxDim;
+        headspaceModel.setAttribute('scale', `${scale} ${scale} ${scale}`);
+
+        const floorY = box.min.y * scale - 0.25;
+        const halfX = (size.x * scale) * 0.52;
+        const halfY = (size.y * scale) * 0.52;
+        const halfZ = (size.z * scale) * 0.52;
+
+        collisionRoot.innerHTML = '';
+        createCollider([halfX * 2 + 0.6, 0.4, halfZ * 2 + 0.6], [0, floorY, 0]);
+        createCollider([0.5, halfY * 2 + 0.6, halfZ * 2 + 0.6], [-(halfX + 0.25), halfY * 0.5, 0]);
+        createCollider([0.5, halfY * 2 + 0.6, halfZ * 2 + 0.6], [(halfX + 0.25), halfY * 0.5, 0]);
+        createCollider([halfX * 2 + 0.6, halfY * 2 + 0.6, 0.5], [0, halfY * 0.5, -(halfZ + 0.25)]);
+        createCollider([halfX * 2 + 0.6, halfY * 2 + 0.6, 0.5], [0, halfY * 0.5, (halfZ + 0.25)]);
+
+        player.setAttribute('position', `0 ${Math.max(0.8, halfY * 0.18 + 0.5)} ${halfZ + 1.4}`);
+      }
+
+      document.getElementById('headspace-asset').addEventListener('model-loaded', scaleModelToFit);
+
+      window.addEventListener('keydown', (event) => {
+        pressed[event.code] = true;
+        if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.code)) {
+          event.preventDefault();
+        }
+      });
+
+      window.addEventListener('keyup', (event) => {
+        pressed[event.code] = false;
+      });
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function sceneCollides(position) {
+        const colliders = document.querySelectorAll('.collider');
+        const radius = 0.22;
+
+        for (const collider of colliders) {
+          const [sx, sy, sz] = (collider.getAttribute('data-collider-size') || '1 1 1').split(' ').map(Number);
+          const colliderPos = new THREE.Vector3();
+          collider.object3D.getWorldPosition(colliderPos);
+          const half = new THREE.Vector3(sx / 2, sy / 2, sz / 2);
+
+          const inX = position.x + radius > colliderPos.x - half.x && position.x - radius < colliderPos.x + half.x;
+          const inY = position.y + radius > colliderPos.y - half.y && position.y - radius < colliderPos.y + half.y;
+          const inZ = position.z + radius > colliderPos.z - half.z && position.z - radius < colliderPos.z + half.z;
+
+          if (inX && inY && inZ) {
+            return true;
+          }
+        }
+
+        return false;
+      }
+
+      AFRAME.registerComponent('fly-move', {
+        schema: {
+          speed: { type: 'number', default: 1.8 },
+          verticalSpeed: { type: 'number', default: 1.5 }
+        },
+        init: function () {
+          this.camera = this.el.querySelector('[camera]');
+        },
+        tick: function (time, delta) {
+          if (!this.camera) return;
+
+          const moveScale = (delta / 1000) * this.data.speed;
+          const verticalScale = (delta / 1000) * this.data.verticalSpeed;
+          const player = this.el.parentElement;
+          const current = player.object3D.position.clone();
+          const next = current.clone();
+
+          const cameraDirection = new THREE.Vector3();
+          this.camera.object3D.getWorldDirection(cameraDirection);
+          cameraDirection.y = 0;
+          if (cameraDirection.lengthSq() > 0) {
+            cameraDirection.normalize();
+          }
+
+          const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), cameraDirection).normalize();
+          const move = new THREE.Vector3();
+
+          if (pressed.KeyW) move.add(cameraDirection);
+          if (pressed.KeyS) move.sub(cameraDirection);
+          if (pressed.KeyA) move.sub(right);
+          if (pressed.KeyD) move.add(right);
+
+          if (pressed.Space) move.y += 1;
+          if (pressed.ShiftLeft || pressed.ShiftRight) move.y -= 1;
+
+          if (move.lengthSq() > 0) {
+            move.normalize();
+
+            next.x += move.x * moveScale;
+            if (!sceneCollides(next)) {
+              current.x = next.x;
+            }
+
+            next.y += move.y * verticalScale;
+            if (!sceneCollides(next)) {
+              current.y = next.y;
+            }
+
+            next.z += move.z * moveScale;
+            if (!sceneCollides(next)) {
+              current.z = next.z;
+            }
+          }
+
+          current.x = clamp(current.x, -6, 6);
+          current.y = clamp(current.y, -0.5, 7);
+          current.z = clamp(current.z, -6, 6);
+
+          player.object3D.position.copy(current);
+        }
+      });
+
+      let buzzStarted = false;
+      function startBuzz() {
+        if (buzzStarted) return;
+        buzzStarted = true;
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+
+        const ctx = new AudioCtx();
+        const master = ctx.createGain();
+        master.gain.value = 0.045;
+        master.connect(ctx.destination);
+
+        const oscillatorA = ctx.createOscillator();
+        oscillatorA.type = 'sine';
+        oscillatorA.frequency.value = 140;
+
+        const oscillatorB = ctx.createOscillator();
+        oscillatorB.type = 'triangle';
+        oscillatorB.frequency.value = 155;
+
+        const lfo = ctx.createOscillator();
+        lfo.type = 'sine';
+        lfo.frequency.value = 7.5;
+
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 18;
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(oscillatorA.frequency);
+        lfoGain.connect(oscillatorB.frequency);
+
+        oscillatorA.connect(master);
+        oscillatorB.connect(master);
+
+        oscillatorA.start();
+        oscillatorB.start();
+        lfo.start();
+      }
+
+      window.addEventListener('pointerdown', startBuzz, { once: true });
+      window.addEventListener('keydown', startBuzz, { once: true });
+    </script>
+  </body>
 </html>
