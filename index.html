@@ -10,7 +10,7 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
-        background: linear-gradient(#02070d 0%, #07141e 18%, #0a1b2a 38%, #081521 68%, #040910 100%);
+        background: linear-gradient(#01050a 0%, #040b12 18%, #07141d 38%, #040b12 68%, #010409 100%);
       }
 
       a-scene {
@@ -47,38 +47,39 @@
   <body>
     <div id="title-card">headspace.</div>
 
-    <a-scene fog="type: linear; color: #2d4868; near: 1.2; far: 25" renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true">
+    <a-scene fog="type: linear; color: #0d1720; near: 0.8; far: 32" renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true">
       <a-assets>
         <a-asset-item id="headspace" src="headspace.glb"></a-asset-item>
       </a-assets>
 
-      <a-sky color="#091722"></a-sky>
+      <a-sky color="#050d16"></a-sky>
 
       <a-entity id="stars"></a-entity>
 
       <a-entity id="scene-lights">
-        <a-light type="ambient" color="#7d90aa" intensity="0.18"></a-light>
-        <a-light type="hemisphere" color="#34506f" ground-color="#030a10" intensity="0.45"></a-light>
-        <a-light type="directional" position="3 5 4" intensity="0.35" color="#506784"></a-light>
-        <a-light type="directional" position="-4 2 -3" intensity="0.25" color="#1d2f42"></a-light>
-        <a-light type="point" position="0 1.6 1.2" intensity="0.4" distance="18" decay="2" color="#8fa7c3"></a-light>
-        <a-light type="point" position="0 0 0" intensity="0.3" distance="12" decay="2" color="#22405a"></a-light>
+        <a-light type="ambient" color="#5d6b80" intensity="0.12"></a-light>
+        <a-light type="hemisphere" color="#203a4f" ground-color="#01070c" intensity="0.32"></a-light>
+        <a-light type="directional" position="3 5 4" intensity="0.22" color="#334c67"></a-light>
+        <a-light type="directional" position="-4 2 -3" intensity="0.18" color="#182b3d"></a-light>
+        <a-light type="point" position="0 1.6 1.2" intensity="0.25" distance="18" decay="2" color="#88a0bd"></a-light>
+        <a-light type="point" position="0 0 0" intensity="0.18" distance="12" decay="2" color="#1d3344"></a-light>
       </a-entity>
 
       <a-entity id="headspace-model" position="0 0 0" rotation="0 90 0" scale="1 1 1">
         <a-entity id="headspace-asset" gltf-model="#headspace" material="side: double; color: #d9d9d9; emissive: #101721; emissiveIntensity: 0.25"></a-entity>
       </a-entity>
 
-      <a-entity id="ground-fog" position="0 -1.7 0">
-        <a-cylinder radius="10" height="4.2" color="#4d6b8e" material="transparent: true; opacity: 0.18; roughness: 1; metalness: 0"></a-cylinder>
-        <a-cylinder radius="8.2" height="3.5" color="#223d5a" material="transparent: true; opacity: 0.12; roughness: 1; metalness: 0" position="0 0.1 0"></a-cylinder>
+      <a-entity id="ground-fog" position="0 -2.7 0">
+        <a-cylinder radius="11.5" height="5.6" color="#132330" material="transparent: true; opacity: 0.36; roughness: 1; metalness: 0"></a-cylinder>
+        <a-cylinder radius="9.5" height="4.8" color="#0b1821" material="transparent: true; opacity: 0.52; roughness: 1; metalness: 0" position="0 0.18 0"></a-cylinder>
+        <a-cylinder radius="7.2" height="3.5" color="#050b10" material="transparent: true; opacity: 0.75; roughness: 1; metalness: 0" position="0 0.6 0"></a-cylinder>
       </a-entity>
 
       <a-entity id="fly-group"></a-entity>
 
       <a-entity id="collision-root"></a-entity>
 
-      <a-entity id="player" position="0 0.2 0.4" scale="0.08 0.08 0.08">
+      <a-entity id="player" position="0 1.6 0.4" scale="0.08 0.08 0.08">
         <a-light type="point" position="0 0 0" intensity="0.6" distance="3.5" decay="2" color="#b5c9e6"></a-light>
         <a-sphere radius="0.22" material="color: #b5c9e6; transparent: true; opacity: 0.04; side: double"></a-sphere>
         <a-entity camera look-controls="pointerLockEnabled: false" fly-move="speed: 0.54; verticalSpeed: 0.36"></a-entity>
@@ -117,7 +118,7 @@
       function scaleModelToFit() {
         const asset = document.getElementById('headspace-asset');
         if (!asset || !asset.object3D || !asset.object3D.children.length) {
-          player.setAttribute('position', '0 0.2 0.4');
+          player.setAttribute('position', '0 1.6 0.4');
           return;
         }
 
@@ -133,9 +134,9 @@
         headspaceModel.setAttribute('scale', `${scale} ${scale} ${scale}`);
 
         const headAsset = document.getElementById('headspace-asset');
-        headAsset.setAttribute('material', 'side: double; color: #3e3f42; emissive: #02070d; emissiveIntensity: 1.2');
+        headAsset.setAttribute('material', 'side: double; color: #2c3138; emissive: #01060b; emissiveIntensity: 1.6');
 
-        player.setAttribute('position', '0 0.2 0.4');
+        player.setAttribute('position', '0 1.6 0.4');
 
         collisionRoot.innerHTML = '';
       }
@@ -162,7 +163,7 @@
 
           star.setAttribute('radius', radius.toFixed(3));
           star.setAttribute('color', '#dfeafc');
-          star.setAttribute('material', `transparent: true; opacity: ${alpha.toFixed(3)}; emissive: #dfeafc; emissiveIntensity: ${brightness.toFixed(2)}`);
+          star.setAttribute('material', `transparent: true; opacity: ${alpha.toFixed(3)}; emissive: #cfe3ff; emissiveIntensity: ${brightness.toFixed(2)}`);
           star.setAttribute('position', `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`);
           stars.appendChild(star);
         }
@@ -180,7 +181,7 @@
 
           const radius = 0.02 + Math.random() * 0.01;
           const orbitRadius = 0.55 + Math.random() * 1.1;
-          const yOffset = -0.15 + Math.random() * 0.75;
+          const yOffset = 0.5 + Math.random() * 0.9;
           const angleOffset = Math.random() * Math.PI * 2;
           const speed = 1.2 + Math.random() * 2.2;
 
@@ -224,6 +225,7 @@
             pulse: Math.random() * Math.PI * 2,
             drift: Math.random() * 0.6 + 0.4,
             collisionRadius: 0.14 + Math.random() * 0.08,
+            minY: 0.75 + Math.random() * 0.35,
           };
 
           flies.push(flyData);
@@ -236,7 +238,8 @@
             const angle = time * fly.speed + fly.angleOffset + index * 0.55;
             const irregular = Math.sin(time * 2.6 + index * 1.7 + fly.pulse) * 0.28;
             const x = Math.cos(angle + irregular) * (fly.radius + Math.sin(time * 3 + index) * 0.18);
-            const y = Math.sin(angle * 2.1 + fly.wobble) * 0.22 + fly.yOffset + Math.cos(time * 4.4 + index) * 0.09;
+            const baseY = Math.sin(angle * 2.1 + fly.wobble) * 0.22 + fly.yOffset + Math.cos(time * 4.4 + index) * 0.09;
+            const y = Math.max(baseY, fly.minY);
             const z = Math.sin(angle + fly.pulse) * (fly.radius * 0.8 + Math.cos(time * 2.8 + index) * 0.12);
 
             fly.currentX = x;
