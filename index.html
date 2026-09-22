@@ -10,7 +10,7 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
-        background: linear-gradient(#dfeeff 0%, #cfe3ff 40%, #b5d4ff 100%);
+        background: linear-gradient(#1a1a2a 0%, #172030 30%, #0f1726 70%, #090d16 100%);
       }
 
       a-scene {
@@ -21,30 +21,38 @@
     </style>
   </head>
   <body>
-    <a-scene fog="type: linear; color: #dfeeff; near: 2; far: 24" renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true">
+    <a-scene fog="type: linear; color: #0d1420; near: 2; far: 24" renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true">
       <a-assets>
         <a-asset-item id="headspace" src="headspace.glb"></a-asset-item>
       </a-assets>
 
-      <a-sky color="#dfeeff"></a-sky>
+      <a-sky color="#111827"></a-sky>
 
       <a-entity id="scene-lights">
-        <a-light type="ambient" color="#ffffff" intensity="1.3"></a-light>
-        <a-light type="hemisphere" color="#f5fbff" ground-color="#cfe3ff" intensity="1.7"></a-light>
-        <a-light type="directional" position="3 5 4" intensity="2.2" color="#fff7df"></a-light>
-        <a-light type="directional" position="-4 2 -3" intensity="1.5" color="#dfeeff"></a-light>
-        <a-light type="point" position="0 1.6 1.2" intensity="3.4" distance="18" decay="2" color="#f8fbff"></a-light>
-        <a-light type="point" position="0 0 0" intensity="2.2" distance="12" decay="2" color="#dfefff"></a-light>
+        <a-light type="ambient" color="#b1bfcc" intensity="0.35"></a-light>
+        <a-light type="hemisphere" color="#62779d" ground-color="#050a12" intensity="0.85"></a-light>
+        <a-light type="directional" position="3 5 4" intensity="0.8" color="#6c7a99"></a-light>
+        <a-light type="directional" position="-4 2 -3" intensity="0.6" color="#28354f"></a-light>
+        <a-light type="point" position="0 1.6 1.2" intensity="0.9" distance="18" decay="2" color="#a7b7d1"></a-light>
+        <a-light type="point" position="0 0 0" intensity="0.75" distance="12" decay="2" color="#4a5c7d"></a-light>
       </a-entity>
 
       <a-entity id="headspace-model" position="0 0 0" rotation="0 90 0" scale="1 1 1">
         <a-entity id="headspace-asset" gltf-model="#headspace" material="side: double; color: #d9d9d9; emissive: #101721; emissiveIntensity: 0.25"></a-entity>
       </a-entity>
 
+      <a-entity id="ground-fog" position="0 -1.7 0">
+        <a-cylinder radius="10" height="3.2" color="#a7b8d6" material="transparent: true; opacity: 0.42; roughness: 1; metalness: 0"></a-cylinder>
+      </a-entity>
+
+      <a-entity id="fly-group"></a-entity>
+
       <a-entity id="collision-root"></a-entity>
 
       <a-entity id="player" position="0 0.2 0.4" scale="0.08 0.08 0.08">
-        <a-entity camera look-controls="pointerLockEnabled: false" fly-move="speed: 0.36; verticalSpeed: 0.24"></a-entity>
+        <a-light type="point" position="0 0 0" intensity="1.2" distance="3.5" decay="2" color="#dfe7ff"></a-light>
+        <a-sphere radius="0.22" material="color: #dfe7ff; transparent: true; opacity: 0.08; side: double"></a-sphere>
+        <a-entity camera look-controls="pointerLockEnabled: false" fly-move="speed: 0.54; verticalSpeed: 0.36"></a-entity>
       </a-entity>
     </a-scene>
 
@@ -95,12 +103,96 @@
         const scale = targetSize / maxDim;
         headspaceModel.setAttribute('scale', `${scale} ${scale} ${scale}`);
 
+        const headAsset = document.getElementById('headspace-asset');
+        headAsset.setAttribute('material', 'side: double; color: #3e3f42; emissive: #02070d; emissiveIntensity: 1.2');
+
         player.setAttribute('position', '0 0.2 0.4');
 
         collisionRoot.innerHTML = '';
       }
 
       document.getElementById('headspace-asset').addEventListener('model-loaded', scaleModelToFit);
+
+      function setupFlies() {
+        const flyGroup = document.getElementById('fly-group');
+        const flies = [];
+
+        for (let i = 0; i < 10; i++) {
+          const flyWrapper = document.createElement('a-entity');
+          const body = document.createElement('a-sphere');
+          const wingLeft = document.createElement('a-box');
+          const wingRight = document.createElement('a-box');
+
+          const radius = 0.02 + Math.random() * 0.01;
+          const orbitRadius = 0.55 + Math.random() * 1.1;
+          const yOffset = -0.15 + Math.random() * 0.75;
+          const angleOffset = Math.random() * Math.PI * 2;
+          const speed = 1.2 + Math.random() * 2.2;
+
+          body.setAttribute('radius', radius.toFixed(3));
+          body.setAttribute('color', '#191919');
+          body.setAttribute('material', 'opacity: 0.9; transparent: true');
+          body.setAttribute('position', '0 0 0');
+
+          const wingScale = 0.07;
+          wingLeft.setAttribute('width', '0.12');
+          wingLeft.setAttribute('height', '0.015');
+          wingLeft.setAttribute('depth', '0.005');
+          wingLeft.setAttribute('color', '#f2f2f2');
+          wingLeft.setAttribute('material', 'opacity: 0.45; transparent: true');
+          wingLeft.setAttribute('rotation', '0 -10 10');
+          wingLeft.setAttribute('position', '-0.04 0.01 0');
+
+          wingRight.setAttribute('width', '0.12');
+          wingRight.setAttribute('height', '0.015');
+          wingRight.setAttribute('depth', '0.005');
+          wingRight.setAttribute('color', '#f2f2f2');
+          wingRight.setAttribute('material', 'opacity: 0.45; transparent: true');
+          wingRight.setAttribute('rotation', '0 10 -10');
+          wingRight.setAttribute('position', '0.04 0.01 0');
+
+          flyWrapper.appendChild(body);
+          flyWrapper.appendChild(wingLeft);
+          flyWrapper.appendChild(wingRight);
+          flyGroup.appendChild(flyWrapper);
+
+          flies.push({
+            el: flyWrapper,
+            body,
+            wingLeft,
+            wingRight,
+            radius: orbitRadius,
+            yOffset,
+            angleOffset,
+            speed,
+            wobble: Math.random() * Math.PI * 2,
+            pulse: Math.random() * Math.PI * 2,
+            drift: Math.random() * 0.6 + 0.4,
+          });
+        }
+
+        function animateFlies() {
+          const time = performance.now() * 0.001;
+          flies.forEach((fly, index) => {
+            const angle = time * fly.speed + fly.angleOffset + index * 0.55;
+            const irregular = Math.sin(time * 2.6 + index * 1.7 + fly.pulse) * 0.28;
+            const x = Math.cos(angle + irregular) * (fly.radius + Math.sin(time * 3 + index) * 0.18);
+            const y = Math.sin(angle * 2.1 + fly.wobble) * 0.22 + fly.yOffset + Math.cos(time * 4.4 + index) * 0.09;
+            const z = Math.sin(angle + fly.pulse) * (fly.radius * 0.8 + Math.cos(time * 2.8 + index) * 0.12);
+
+            fly.el.setAttribute('position', `${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`);
+            fly.el.setAttribute('rotation', `${(Math.sin(time * 30 + index) * 22).toFixed(2)} ${(time * 170 + index * 30).toFixed(2)} ${(Math.cos(time * 22 + index) * 18).toFixed(2)}`);
+            const wingBeat = Math.sin(time * (26 + fly.drift) + index);
+            fly.wingLeft.setAttribute('rotation', `0 ${wingBeat * 38 - 12} ${wingBeat * 14 + 12}`);
+            fly.wingRight.setAttribute('rotation', `0 ${-wingBeat * 38 + 12} ${-wingBeat * 14 - 12}`);
+          });
+          requestAnimationFrame(animateFlies);
+        }
+
+        requestAnimationFrame(animateFlies);
+      }
+
+      setupFlies();
 
       window.addEventListener('keydown', (event) => {
         pressed[event.code] = true;
@@ -123,12 +215,13 @@
 
       AFRAME.registerComponent('fly-move', {
         schema: {
-          speed: { type: 'number', default: 0.36 },
-          verticalSpeed: { type: 'number', default: 0.24 }
+          speed: { type: 'number', default: 0.54 },
+          verticalSpeed: { type: 'number', default: 0.36 }
         },
         init: function () {
           this.camera = this.el;
           this.hoverTime = 0;
+          this.driftTime = 0;
         },
         tick: function (time, delta) {
           if (!this.camera) return;
@@ -142,6 +235,11 @@
           const right = new THREE.Vector3(1, 0, 0);
           forward.applyQuaternion(this.camera.object3D.quaternion);
           right.applyQuaternion(this.camera.object3D.quaternion);
+
+          this.driftTime += delta;
+          const driftX = Math.sin(this.driftTime * 0.0035) * 0.008;
+          const driftY = Math.cos(this.driftTime * 0.0048) * 0.006;
+          const driftZ = Math.sin(this.driftTime * 0.0042 + 1.2) * 0.006;
 
           const move = new THREE.Vector3();
           let isMoving = false;
@@ -190,14 +288,20 @@
             }
           } else {
             this.hoverTime += delta;
-            current.y += Math.sin(this.hoverTime * 0.006) * 0.004;
+            current.y += Math.sin(this.hoverTime * 0.012) * 0.006;
           }
+
+          current.x += driftX;
+          current.y += driftY;
+          current.z += driftZ;
 
           current.x = clamp(current.x, -50, 50);
           current.y = clamp(current.y, -20, 20);
           current.z = clamp(current.z, -50, 50);
 
           player.object3D.position.copy(current);
+          this.camera.object3D.rotation.z += Math.sin(this.driftTime * 0.009) * 0.00025;
+          this.camera.object3D.rotation.x += Math.cos(this.driftTime * 0.011) * 0.00022;
         }
       });
 
@@ -219,32 +323,33 @@
         master.connect(ctx.destination);
 
         const toneA = ctx.createOscillator();
-        toneA.type = 'triangle';
-        toneA.frequency.value = 120;
+        toneA.type = 'sawtooth';
+        toneA.frequency.value = 88;
 
         const toneB = ctx.createOscillator();
-        toneB.type = 'sine';
-        toneB.frequency.value = 175;
+        toneB.type = 'triangle';
+        toneB.frequency.value = 132;
 
-        const lfo = ctx.createOscillator();
-        lfo.type = 'sine';
-        lfo.frequency.value = 4.5;
+        const wobble = ctx.createOscillator();
+        wobble.type = 'sine';
+        wobble.frequency.value = 7.5;
 
-        const lfoGain = ctx.createGain();
-        lfoGain.gain.value = 24;
+        const wobbleGain = ctx.createGain();
+        wobbleGain.gain.value = 18;
 
         const filter = ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 900;
-        filter.Q.value = 0.8;
+        filter.type = 'bandpass';
+        filter.frequency.value = 780;
+        filter.Q.value = 0.7;
 
         const toneGain = ctx.createGain();
-        toneGain.gain.value = 0.18;
+        toneGain.gain.value = 0.11;
 
-        const noiseBuffer = ctx.createBuffer(1, 0.7 * ctx.sampleRate, ctx.sampleRate);
+        const noiseBuffer = ctx.createBuffer(1, 0.9 * ctx.sampleRate, ctx.sampleRate);
         const channel = noiseBuffer.getChannelData(0);
         for (let i = 0; i < channel.length; i++) {
-          channel[i] = (Math.random() * 2 - 1) * 0.12;
+          const envelope = 1 - (i / channel.length);
+          channel[i] = (Math.random() * 2 - 1) * 0.18 * envelope;
         }
 
         const noise = ctx.createBufferSource();
@@ -252,11 +357,11 @@
         noise.loop = true;
 
         const noiseGain = ctx.createGain();
-        noiseGain.gain.value = 0.08;
+        noiseGain.gain.value = 0.18;
 
-        lfo.connect(lfoGain);
-        lfoGain.connect(toneA.frequency);
-        lfoGain.connect(toneB.frequency);
+        wobble.connect(wobbleGain);
+        wobbleGain.connect(toneA.frequency);
+        wobbleGain.connect(toneB.frequency);
 
         toneA.connect(toneGain);
         toneB.connect(toneGain);
@@ -269,7 +374,7 @@
         toneA.start();
         toneB.start();
         noise.start();
-        lfo.start();
+        wobble.start();
       }
 
       window.addEventListener('pointerdown', startBuzz, { once: true });
